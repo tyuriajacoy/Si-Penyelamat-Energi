@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Si Penyelamat Energi - Simulasi Bengkel SMK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #090d16; }
+        canvas { background-color: #0f172a; display: block; image-rendering: pixelated; }
+        .hud-glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); }
+        .dpad-btn {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(100, 116, 139, 0.5);
+        }
+        .dpad-btn:active {
+            background: rgba(16, 185, 129, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden p-2">
+
+    <!-- START SCREEN / COVER -->
+    <div id="startScreen" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
+        <div class="max-w-md w-full bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="inline-block p-3.5 bg-emerald-500/10 rounded-full border border-emerald-500/30">
+                <svg class="w-12 h-12 text-emerald-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-extrabold text-white tracking-wide">SI PENYELAMAT ENERGI</h1>
+                <p class="text-emerald-400 font-medium text-xs mt-1">Simulasi Penghematan Listrik Bengkel Mesin SMK</p>
+            </div>
+            
+            <!-- PILIHAN LEVEL KESULITAN -->
+            <div class="space-y-2 text-left">
+                <p class="text-xs font-bold text-slate-300 uppercase tracking-wider">Pilih Tingkat Kesulitan:</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" data-level="1" class="level-btn active-level p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/20 text-center transition cursor-pointer">
+                        <div class="text-xs font-extrabold text-emerald-400">LEVEL 1</div>
+                        <div class="text-[11px] font-bold text-white">MUDAH</div>
+                        <div class="text-[10px] text-slate-300 mt-0.5">8 Alat • 11s</div>
+                    </button>
+                    <button type="button" data-level="2" class="level-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:border-amber-500/50 text-center transition cursor-pointer">
+                        <div class="text-xs font-extrabold text-amber-400">LEVEL 2</div>
+                        <div class="text-[11px] font-bold text-white">SEDANG</div>
+                        <div class="text-[10px] text-slate-300 mt-0.5">10 Alat • 7s</div>
+                    </button>
+                    <button type="button" data-level="3" class="level-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:border-red-500/50 text-center transition cursor-pointer">
+                        <div class="text-xs font-extrabold text-red-400">LEVEL 3</div>
+                        <div class="text-[11px] font-bold text-white">SULIT</div>
+                        <div class="text-[10px] text-slate-300 mt-0.5">14 Alat • 5s</div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-left bg-slate-800/80 p-3 rounded-xl text-xs text-slate-300 space-y-1 border border-slate-700 leading-relaxed">
+                <p id="menuMissionInfo"><strong>🎯 Detail Misi:</strong> Matikan <strong>8 alat listrik</strong> (waktu <strong>11 detik</strong>/target).</p>
+                <p><strong>💔 Penalti HP:</strong> Terlambat mematikan target mengurangi <strong>10% HP</strong>.</p>
+                <p class="text-amber-400 font-semibold">💡 Kontrol: WASD/Panah/D-Pad + Tombol "E" atau tap alat langsung!</p>
+            </div>
+
+            <button id="btnStart" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-bold rounded-xl text-base transition shadow-lg shadow-emerald-500/20 cursor-pointer">
+                Mulai Level 1 (Mudah)
+            </button>
+        </div>
+    </div>
+
+    <!-- RESULT / END SCREEN -->
+    <div id="endScreen" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
+        <div class="max-w-md w-full bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div id="endBadge" class="inline-block p-4 rounded-full border"></div>
+            <div>
+                <div id="endLevelBadge" class="inline-block text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 mb-1">Level 1 - Mudah</div>
+                <h2 id="endTitle" class="text-2xl font-extrabold tracking-wide"></h2>
+                <p id="endSubtitle" class="text-xs mt-1 text-slate-400"></p>
+            </div>
+
+            <div class="bg-slate-800/80 p-4 rounded-xl text-xs text-slate-200 space-y-2 border border-slate-700 text-left">
+                <div class="flex justify-between border-b border-slate-700 pb-1.5">
+                    <span class="text-slate-400">Target Berhasil:</span>
+                    <span id="resScore" class="font-bold text-amber-400">0/8</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700 pb-1.5">
+                    <span class="text-slate-400">Sisa HP:</span>
+                    <span id="resHP" class="font-bold text-emerald-400">100%</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700 pb-1.5">
+                    <span class="text-slate-400">Total Energi Diselamatkan:</span>
+                    <span id="resKWh" class="font-bold text-emerald-300">0.00 kWh</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700 pb-1.5">
+                    <span class="text-slate-400">Estimasi Biaya Dihemat:</span>
+                    <span id="resCost" class="font-bold text-emerald-400">Rp 0</span>
+                </div>
+                <div id="resTip" class="text-[11px] text-amber-300 italic pt-1 leading-normal">
+                    "Mematikan mesin bubut, gerinda, serta penerangan saat jam istirahat sangat efektif menekan daya reaktif bengkel SMK!"
+                </div>
+            </div>
+
+            <!-- TOMBOL NAVIGASI HASIL -->
+            <div id="endButtonsContainer" class="flex flex-col gap-2 pt-1">
+                <button id="btnNextLevel" class="hidden w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-emerald-500/20 cursor-pointer">
+                    Lanjut ke Level Berikutnya →
+                </button>
+                <div class="flex gap-2">
+                    <button id="btnHome" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-sm border border-slate-600 transition cursor-pointer">
+                        🏠 Kembali ke Home
+                    </button>
+                    <button id="btnRestart" class="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-sm transition cursor-pointer">
+                        ↻ Ulangi Level
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GAME CONTAINER -->
+    <div class="flex-1 flex flex-col items-center gap-2 max-w-lg mx-auto w-full">
+        <!-- TOP BAR LEVEL & HOME -->
+        <div class="w-full flex justify-between items-center hud-glass px-3 py-1.5 rounded-xl border border-slate-800">
+            <div class="flex items-center gap-2">
+                <span id="hudLevelBadge" class="text-xs font-extrabold text-emerald-400">LEVEL 1 • MUDAH</span>
+            </div>
+            <button id="btnHudHome" class="text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition cursor-pointer">
+                🏠 Home
+            </button>
+        </div>
+
+        <!-- TOP HUD -->
+        <div class="w-full grid grid-cols-2 gap-2">
+            <!-- HEALTH & MISSION -->
+            <div class="hud-glass p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">HP Status</span>
+                    <span id="hpText" class="text-xs font-bold text-emerald-400">100%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+                    <div id="hpBar" class="bg-emerald-500 h-full w-full transition-all duration-300"></div>
+                </div>
+                <div class="mt-2 pt-1.5 border-t border-slate-800 flex justify-between items-center">
+                    <div id="missionDesc" class="text-[11px] text-amber-300 font-semibold truncate">Cari Target...</div>
+                    <div id="missionTimer" class="text-[11px] font-mono font-bold text-red-400 bg-red-950/60 px-1.5 py-0.5 rounded border border-red-800">11.0s</div>
+                </div>
+            </div>
+
+            <!-- COST & PROGRESS -->
+            <div class="hud-glass p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Energi Dihemat</span>
+                    <span id="targetProgress" class="text-[10px] font-bold text-amber-400 bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-800/60">0/8</span>
+                </div>
+                <div class="text-base font-extrabold text-emerald-400 tracking-tight my-0.5" id="hudCost">Rp 0</div>
+                <div class="pt-1 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400">
+                    <span>Daya: <strong id="hudKWh" class="text-slate-200">0.00 kWh</strong></span>
+                    <span>Rp 925/kWh</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANVAS WORKSHOP (600x600 for 4-quadrant layout) -->
+        <div class="relative w-full rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-900">
+            <canvas id="gameCanvas" width="600" height="600" class="w-full h-auto aspect-square"></canvas>
+            <!-- Toast Alert Message -->
+            <div id="toastMsg" class="pointer-events-none opacity-0 transition-opacity duration-300 absolute top-3 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-amber-500/50 text-amber-300 text-xs px-3 py-1.5 rounded-full font-medium shadow-lg backdrop-blur">
+                Peringatan Target Aktif!
+            </div>
+        </div>
+
+        <!-- MOBILE CONTROLS & INTERACTION HUD -->
+        <div class="w-full flex justify-between items-center gap-2 p-1">
+            <!-- D-PAD CONTROLS -->
+            <div class="grid grid-cols-3 gap-1 w-32 h-32">
+                <div></div>
+                <button id="btnUp" class="dpad-btn rounded-t-xl flex items-center justify-center text-slate-200 active:bg-emerald-500 active:text-slate-950">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 15l7-7 7 7"/></svg>
+                </button>
+                <div></div>
+                <button id="btnLeft" class="dpad-btn rounded-l-xl flex items-center justify-center text-slate-200 active:bg-emerald-500 active:text-slate-950">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div class="bg-slate-800/40 rounded-md border border-slate-700/50 flex items-center justify-center">
+                    <span class="w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
+                </div>
+                <button id="btnRight" class="dpad-btn rounded-r-xl flex items-center justify-center text-slate-200 active:bg-emerald-500 active:text-slate-950">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <div></div>
+                <button id="btnDown" class="dpad-btn rounded-b-xl flex items-center justify-center text-slate-200 active:bg-emerald-500 active:text-slate-950">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div></div>
+            </div>
+
+            <!-- ACTION INTERACTION BUTTON -->
+            <div class="flex-1 flex flex-col items-center justify-center gap-1.5 pl-2">
+                <button id="btnAction" class="w-full h-20 bg-gradient-to-br from-amber-500 to-amber-600 active:from-amber-600 active:to-amber-700 text-slate-950 font-black rounded-2xl shadow-lg border border-amber-300/40 flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 cursor-pointer">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        <span class="bg-slate-950/80 text-amber-400 text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-400/40 font-bold">[E]</span>
+                    </div>
+                    <span class="text-xs tracking-wider uppercase">MATIKAN ALAT</span>
+                </button>
+                <span class="text-[10px] text-slate-400 text-center leading-tight">Dekati target & tekan <kbd class="px-1 py-0.5 bg-slate-800 border border-slate-600 rounded text-amber-300 font-mono">E</kbd> / sentuh map</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO & LOGIC ENGINE SCRIPT -->
+    <script>
+        // --- AUDIO SYNTHESIS SYSTEM (Web Audio API) ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                try {
+                    if (!this.ctx) {
+                        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        if (AudioCtx) {
+                            this.ctx = new AudioCtx();
+                        }
+                    }
+                    if (this.ctx && this.ctx.state === 'suspended') {
+                        this.ctx.resume();
+                    }
+                } catch (e) {
+                    console.warn("AudioContext tidak didukung atau dibatasi:", e);
+                }
+            }
+            playBeep(freq = 440, duration = 0.1, type = 'sine') {
+                try {
+                    if (!this.ctx) return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            }
+            playSuccess() {
+                try {
+                    if (!this.ctx) return;
+                    const now = this.ctx.currentTime;
+                    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.frequency.setValueAtTime(f, now + i * 0.08);
+                        gain.gain.setValueAtTime(0.12, now + i * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.15);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + i * 0.08);
+                        osc.stop(now + i * 0.08 + 0.15);
+                    });
+                } catch(e) {}
+            }
+            playPenalty() {
+                try {
+                    if (!this.ctx) return;
+                    const now = this.ctx.currentTime;
+                    [150, 110].forEach((f, i) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(f, now + i * 0.15);
+                        gain.gain.setValueAtTime(0.2, now + i * 0.15);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.25);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + i * 0.15);
+                        osc.stop(now + i * 0.15 + 0.25);
+                    });
+                } catch(e) {}
+            }
+        }
+
+        const audioFX = new SoundEngine();
+
+        // --- GAME VARIABLES ---
+        const LEVELS = {
+            1: { id: 1, name: "Mudah", targets: 8, time: 11.0, badgeColor: "text-emerald-400" },
+            2: { id: 2, name: "Sedang", targets: 10, time: 7.0, badgeColor: "text-amber-400" },
+            3: { id: 3, name: "Sulit", targets: 14, time: 5.0, badgeColor: "text-red-400" }
+        };
+
+        let selectedLevel = 1;
+        let gameState = "START"; // START, PLAYING, END
+        let hp = 100;
+        let score = 0;
+        let totalKWhSaved = 0;
+        const tariffPerKWh = 925;
+        let targetQueue = [];
+        let currentTargetIndex = 0;
+        let targetTimer = 11.0;
+        let maxTimePerTarget = 11.0;
+        let totalTargetsNeeded = 8;
+
+        // Player object (centered in main walkway)
+        let player = {
+            x: 300,
+            y: 300,
+            radius: 13,
+            speed: 225,
+            dirX: 0,
+            dirY: 1,
+            stepAnim: 0
+        };
+
+        let keys = { Up: false, Down: false, Left: false, Right: false };
+        let equipments = [];
+        let particles = [];
+        let fanRotation = 0;
+
+        let canvas = null;
+        let ctx = null;
+
+        // --- WORKSHOP EQUIPMENT SETUP (4 SYMMETRICAL QUADRANTS) ---
+        function initEquipments() {
+            equipments = [];
+            let idCounter = 1;
+
+            // Helper untuk membuat setiap zona ruangan (ukuran kotak 256 x 256)
+            function createZone(startX, startY, machineType, zoneLabel) {
+                // 1. 6 Unit Utama (Grid rapi 2 Kolom x 3 Baris di area kiri-tengah ruangan)
+                const colOffsets = [22, 108];
+                const rowOffsets = [32, 82, 132];
+                let unitCount = 1;
+
+                for (let r = 0; r < 3; r++) {
+                    for (let c = 0; c < 2; c++) {
+                        let ux = startX + colOffsets[c];
+                        let uy = startY + rowOffsets[r];
+
+                        if (machineType === "lathe") {
+                            equipments.push({
+                                id: idCounter++,
+                                name: `Mesin Bubut ${zoneLabel} #${unitCount++}`,
+                                type: "lathe",
+                                x: ux,
+                                y: uy,
+                                w: 72,
+                                h: 34,
+                                kwh: 2.2,
+                                isOn: true
+                            });
+                        } else if (machineType === "bench") {
+                            equipments.push({
+                                id: idCounter++,
+                                name: `Meja Tanggem #${unitCount++}`,
+                                type: "bench_vise",
+                                x: ux,
+                                y: uy,
+                                w: 72,
+                                h: 34,
+                                kwh: 0.45,
+                                isOn: true
+                            });
+                        } else if (machineType === "grind") {
+                            equipments.push({
+                                id: idCounter++,
+                                name: `Mesin Grinding #${unitCount++}`,
+                                type: "grind",
+                                x: ux,
+                                y: uy,
+                                w: 72,
+                                h: 34,
+                                kwh: 1.5,
+                                isOn: true
+                            });
+                        }
+                    }
+                }
+
+                // 2. 3 Kipas Angin (Tersusun vertikal rapi di sisi kanan ruangan)
+                const fanYOffsets = [48, 98, 148];
+                for (let f = 0; f < 3; f++) {
+                    equipments.push({
+                        id: idCounter++,
+                        name: `Kipas ${zoneLabel} #${f + 1}`,
+                        type: "fan",
+                        x: startX + 206,
+                        y: startY + fanYOffsets[f],
+                        w: 32,
+                        h: 32,
+                        kwh: 0.15,
+                        isOn: true
+                    });
+                }
+
+                // 3. 4 Lampu (Tersusun sejajar horizontal di jalur bawah ruangan)
+                const lightXOffsets = [26, 80, 134, 188];
+                for (let l = 0; l < 4; l++) {
+                    equipments.push({
+                        id: idCounter++,
+                        name: `Lampu ${zoneLabel} #${l + 1}`,
+                        type: "light",
+                        x: startX + lightXOffsets[l],
+                        y: startY + 200,
+                        w: 38,
+                        h: 22,
+                        kwh: 0.12,
+                        isOn: true
+                    });
+                }
+            }
+
+            // Zona 1: Kiri Atas (X: 12..268, Y: 12..268) -> 6 Bubut, 4 Lampu, 3 Kipas
+            createZone(12, 12, "lathe", "Bubut A");
+
+            // Zona 2: Kiri Bawah (X: 12..268, Y: 332..588) -> 6 Bubut, 4 Lampu, 3 Kipas
+            createZone(12, 332, "lathe", "Bubut B");
+
+            // Zona 3: Kanan Atas (X: 332..588, Y: 12..268) -> 6 Meja Tanggem, 4 Lampu, 3 Kipas
+            createZone(332, 12, "bench", "Kerja Bangku");
+
+            // Zona 4: Kanan Bawah (X: 332..588, Y: 332..588) -> 6 Grinding, 4 Lampu, 3 Kipas
+            createZone(332, 332, "grind", "Grinding");
+        }
+
+        function selectLevel(lvl) {
+            selectedLevel = lvl;
+            const cfg = LEVELS[lvl];
+
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                const bLvl = parseInt(btn.getAttribute('data-level'));
+                btn.classList.remove('border-2', 'border-emerald-500', 'bg-emerald-500/20', 'border-amber-500', 'bg-amber-500/20', 'border-red-500', 'bg-red-500/20');
+                btn.classList.add('border', 'border-slate-700', 'bg-slate-800/80');
+
+                if (bLvl === lvl) {
+                    btn.classList.remove('border', 'border-slate-700', 'bg-slate-800/80');
+                    btn.classList.add('border-2');
+                    if (lvl === 1) btn.classList.add('border-emerald-500', 'bg-emerald-500/20');
+                    if (lvl === 2) btn.classList.add('border-amber-500', 'bg-amber-500/20');
+                    if (lvl === 3) btn.classList.add('border-red-500', 'bg-red-500/20');
+                }
+            });
+
+            const infoEl = document.getElementById('menuMissionInfo');
+            if (infoEl) {
+                infoEl.innerHTML = `<strong>🎯 Detail Misi:</strong> Matikan <strong>${cfg.targets} alat listrik</strong> (waktu <strong>${cfg.time} detik</strong>/target).`;
+            }
+
+            const btnStart = document.getElementById('btnStart');
+            if (btnStart) {
+                btnStart.textContent = `Mulai Level ${cfg.id} (${cfg.name})`;
+            }
+        }
+
+        function goToHome() {
+            gameState = "START";
+            keys = { Up: false, Down: false, Left: false, Right: false };
+            document.getElementById('endScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+            selectLevel(selectedLevel);
+        }
+
+        function startGame(lvlOverride) {
+            if (typeof lvlOverride === 'number') {
+                selectedLevel = lvlOverride;
+            }
+            const cfg = LEVELS[selectedLevel] || LEVELS[1];
+
+            audioFX.init();
+            audioFX.playBeep(600, 0.1);
+            
+            hp = 100;
+            score = 0;
+            totalKWhSaved = 0;
+            currentTargetIndex = 0;
+            maxTimePerTarget = cfg.time;
+            targetTimer = maxTimePerTarget;
+            totalTargetsNeeded = cfg.targets;
+            player.x = 300;
+            player.y = 300;
+
+            initEquipments();
+
+            let shuffled = [...equipments].sort(() => 0.5 - Math.random());
+            targetQueue = shuffled.slice(0, totalTargetsNeeded);
+
+            const hudLvl = document.getElementById('hudLevelBadge');
+            if (hudLvl) {
+                hudLvl.textContent = `LEVEL ${cfg.id} • ${cfg.name.toUpperCase()}`;
+                hudLvl.className = `text-xs font-extrabold ${cfg.badgeColor}`;
+            }
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('endScreen').classList.add('hidden');
+            gameState = "PLAYING";
+            updateHUD();
+            showToast(`Level ${cfg.id} (${cfg.name}) Dimulai! Target: ${totalTargetsNeeded} alat.`);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastMsg');
+            if (!toast) return;
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            clearTimeout(toast.hideTimeout);
+            toast.hideTimeout = setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2200);
+        }
+
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 16; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 140,
+                    vy: (Math.random() - 0.5) * 140,
+                    alpha: 1,
+                    color: color,
+                    size: Math.random() * 3 + 2
+                });
+            }
+        }
+
+        // --- INPUT & INTERACTION ---
+        function setupInputs() {
+            window.addEventListener('keydown', (e) => {
+                if (gameState === 'START') {
+                    if (e.key === '1') selectLevel(1);
+                    if (e.key === '2') selectLevel(2);
+                    if (e.key === '3') selectLevel(3);
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        startGame(selectedLevel);
+                        return;
+                    }
+                }
+                if (gameState === 'END' && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    startGame(selectedLevel);
+                    return;
+                }
+                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.Up = true;
+                if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.Down = true;
+                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.Left = true;
+                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.Right = true;
+                if (e.key === 'e' || e.key === 'E' || e.key === ' ') {
+                    if (gameState === 'PLAYING') {
+                        e.preventDefault();
+                        checkInteraction();
+                    }
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.Up = false;
+                if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.Down = false;
+                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.Left = false;
+                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.Right = false;
+            });
+        }
+
+        function setupTouchControls() {
+            const bindBtn = (id, keyName) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                const setTrue = (e) => { e.preventDefault(); keys[keyName] = true; };
+                const setFalse = (e) => { e.preventDefault(); keys[keyName] = false; };
+                btn.addEventListener('touchstart', setTrue, { passive: false });
+                btn.addEventListener('touchend', setFalse, { passive: false });
+                btn.addEventListener('mousedown', setTrue);
+                btn.addEventListener('mouseup', setFalse);
+                btn.addEventListener('mouseleave', setFalse);
+            };
+            bindBtn('btnUp', 'Up');
+            bindBtn('btnDown', 'Down');
+            bindBtn('btnLeft', 'Left');
+            bindBtn('btnRight', 'Right');
+        }
+
+        function handleCanvasClick(e) {
+            if (gameState !== "PLAYING") return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clickX = (e.clientX - rect.left) * scaleX;
+            const clickY = (e.clientY - rect.top) * scaleY;
+
+            const activeTarget = targetQueue[currentTargetIndex];
+            if (!activeTarget) return;
+
+            const tx = activeTarget.x + activeTarget.w / 2;
+            const ty = activeTarget.y + activeTarget.h / 2;
+            const distClick = Math.hypot(clickX - tx, clickY - ty);
+            const distPlayer = Math.hypot(player.x - tx, player.y - ty);
+
+            if (distClick < 55 && distPlayer < 95) {
+                turnOffEquipment(activeTarget);
+            } else if (distClick < 55) {
+                showToast("Terlalu jauh! Dekati alatnya terlebih dahulu.");
+                audioFX.playBeep(220, 0.08, 'triangle');
+            }
+        }
+
+        function checkInteraction() {
+            if (gameState !== "PLAYING") return;
+            const activeTarget = targetQueue[currentTargetIndex];
+            if (!activeTarget) return;
+
+            const tx = activeTarget.x + activeTarget.w / 2;
+            const ty = activeTarget.y + activeTarget.h / 2;
+            const dist = Math.hypot(player.x - tx, player.y - ty);
+
+            if (dist <= 82) {
+                turnOffEquipment(activeTarget);
+            } else {
+                showToast("Dekati target yang berkedip merah!");
+                audioFX.playBeep(240, 0.08, 'triangle');
+            }
+        }
+
+        function turnOffEquipment(eq) {
+            if (!eq.isOn) return;
+            eq.isOn = false;
+            score++;
+            totalKWhSaved += eq.kwh;
+
+            audioFX.playBeep(880, 0.15, 'sine');
+            createParticles(eq.x + eq.w / 2, eq.y + eq.h / 2, "#34d399");
+
+            currentTargetIndex++;
+            targetTimer = maxTimePerTarget;
+
+            if (currentTargetIndex >= targetQueue.length || score >= totalTargetsNeeded) {
+                endGame(true);
+            } else {
+                showToast(`Berhasil mematikan ${eq.name}!`);
+                updateHUD();
+            }
+        }
+
+        function triggerTimeoutPenalty() {
+            hp = Math.max(0, hp - 10);
+            audioFX.playPenalty();
+
+            const activeTarget = targetQueue[currentTargetIndex];
+            if (activeTarget) {
+                createParticles(activeTarget.x + activeTarget.w / 2, activeTarget.y + activeTarget.h / 2, "#ef4444");
+            }
+
+            if (hp <= 0) {
+                updateHUD();
+                endGame(false);
+                return;
+            }
+
+            currentTargetIndex++;
+            targetTimer = maxTimePerTarget;
+            if (currentTargetIndex >= targetQueue.length) {
+                endGame(true);
+            } else {
+                showToast("Waktu habis! HP berkurang 10%!");
+                updateHUD();
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('hpText').textContent = `${hp}%`;
+            document.getElementById('hpBar').style.width = `${hp}%`;
+            document.getElementById('targetProgress').textContent = `${score}/${totalTargetsNeeded}`;
+
+            let cost = Math.round(totalKWhSaved * tariffPerKWh);
+            document.getElementById('hudCost').textContent = `Rp ${cost.toLocaleString('id-ID')}`;
+            document.getElementById('hudKWh').textContent = `${totalKWhSaved.toFixed(2)} kWh`;
+
+            const activeTarget = targetQueue[currentTargetIndex];
+            if (activeTarget) {
+                document.getElementById('missionDesc').textContent = `Matikan: ${activeTarget.name}`;
+            }
+
+            const hpBar = document.getElementById('hpBar');
+            const hpText = document.getElementById('hpText');
+            if (hp > 50) {
+                hpBar.className = "bg-emerald-500 h-full transition-all duration-300";
+                hpText.className = "text-xs font-bold text-emerald-400";
+            } else if (hp > 20) {
+                hpBar.className = "bg-amber-500 h-full transition-all duration-300";
+                hpText.className = "text-xs font-bold text-amber-400";
+            } else {
+                hpBar.className = "bg-red-500 h-full transition-all duration-300";
+                hpText.className = "text-xs font-bold text-red-400";
+            }
+        }
+
+        function updateHUDText() {
+            document.getElementById('hpBar').style.width = `${hp}%`;
+            document.getElementById('hpText').textContent = `${hp}%`;
+            document.getElementById('targetProgress').textContent = `${score}/${totalTargetsNeeded}`;
+
+            let cost = Math.round(totalKWhSaved * tariffPerKWh);
+            document.getElementById('hudCost').textContent = `Rp ${cost.toLocaleString('id-ID')}`;
+            document.getElementById('hudKWh').textContent = `${totalKWhSaved.toFixed(2)} kWh`;
+        }
+
+        function endGame(isVictory) {
+            gameState = "END";
+            const cfg = LEVELS[selectedLevel] || LEVELS[1];
+            const endScreen = document.getElementById('endScreen');
+            const endBadge = document.getElementById('endBadge');
+            const endLevelBadge = document.getElementById('endLevelBadge');
+            const endTitle = document.getElementById('endTitle');
+            const endSubtitle = document.getElementById('endSubtitle');
+            const btnNextLevel = document.getElementById('btnNextLevel');
+            const btnRestart = document.getElementById('btnRestart');
+
+            if (endLevelBadge) {
+                endLevelBadge.textContent = `Level ${cfg.id} - ${cfg.name}`;
+            }
+
+            document.getElementById('resScore').textContent = `${score}/${totalTargetsNeeded}`;
+            document.getElementById('resHP').textContent = `${hp}%`;
+            document.getElementById('resKWh').textContent = `${totalKWhSaved.toFixed(2)} kWh`;
+            let cost = Math.round(totalKWhSaved * tariffPerKWh);
+            document.getElementById('resCost').textContent = `Rp ${cost.toLocaleString('id-ID')}`;
+
+            if (isVictory) {
+                endBadge.className = "inline-block p-4 bg-emerald-500/10 rounded-full border border-emerald-500/30 text-emerald-400";
+                endBadge.innerHTML = `<svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+                endTitle.textContent = `LEVEL ${cfg.id} (${cfg.name.toUpperCase()}) SELESAI!`;
+                endTitle.className = "text-2xl font-extrabold text-emerald-400 tracking-wide";
+                endSubtitle.textContent = selectedLevel < 3
+                    ? "Hebat! Anda siap melanjutkan ke tingkat kesulitan berikutnya atau kembali ke Home."
+                    : "Luar biasa! Anda telah menaklukkan seluruh tantangan tingkat Sulit di bengkel SMK!";
+                audioFX.playSuccess();
+
+                if (selectedLevel < 3) {
+                    const nextCfg = LEVELS[selectedLevel + 1];
+                    btnNextLevel.classList.remove('hidden');
+                    btnNextLevel.textContent = `Lanjut ke Level ${nextCfg.id} (${nextCfg.name}) →`;
+                    btnRestart.classList.remove('hidden');
+                } else {
+                    btnNextLevel.classList.add('hidden');
+                    btnRestart.classList.remove('hidden');
+                }
+            } else {
+                endBadge.className = "inline-block p-4 bg-red-500/10 rounded-full border border-red-500/30 text-red-400";
+                endBadge.innerHTML = `<svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+                endTitle.textContent = "SIMULASI GAGAL (HP HABIS)";
+                endTitle.className = "text-2xl font-extrabold text-red-400 tracking-wide";
+                endSubtitle.textContent = "Terlalu banyak alat boros yang dibiarkan menyala. Energi bengkel terbuang sia-sia!";
+                audioFX.playPenalty();
+
+                btnNextLevel.classList.add('hidden');
+                btnRestart.classList.remove('hidden');
+            }
+
+            endScreen.classList.remove('hidden');
+        }
+
+        // --- UPDATE ENGINE ---
+        function update(dt) {
+            if (gameState !== "PLAYING") return;
+
+            // Update fan rotation animation
+            fanRotation += dt * 10;
+
+            // Player movement
+            let moveX = 0;
+            let moveY = 0;
+            if (keys.Up) moveY -= 1;
+            if (keys.Down) moveY += 1;
+            if (keys.Left) moveX -= 1;
+            if (keys.Right) moveX += 1;
+
+            if (moveX !== 0 || moveY !== 0) {
+                const len = Math.hypot(moveX, moveY);
+                moveX /= len;
+                moveY /= len;
+                player.dirX = moveX;
+                player.dirY = moveY;
+                player.stepAnim += dt * 12;
+
+                let nextX = player.x + moveX * player.speed * dt;
+                let nextY = player.y + moveY * player.speed * dt;
+
+                // Boundary clamping
+                nextX = Math.max(20, Math.min(580, nextX));
+                nextY = Math.max(20, Math.min(580, nextY));
+
+                // Solid collision check with heavy machinery & tables
+                let blockedX = false;
+                let blockedY = false;
+
+                for (let eq of equipments) {
+                    if (eq.type === "lathe" || eq.type === "bench_vise" || eq.type === "grind") {
+                        const pad = player.radius - 2;
+                        if (nextX + pad > eq.x && nextX - pad < eq.x + eq.w &&
+                            player.y + pad > eq.y && player.y - pad < eq.y + eq.h) {
+                            blockedX = true;
+                        }
+                        if (player.x + pad > eq.x && player.x - pad < eq.x + eq.w &&
+                            nextY + pad > eq.y && nextY - pad < eq.y + eq.h) {
+                            blockedY = true;
+                        }
+                    }
+                }
+
+                if (!blockedX) player.x = nextX;
+                if (!blockedY) player.y = nextY;
+            }
+
+            // Target countdown timer
+            const activeTarget = targetQueue[currentTargetIndex];
+            if (activeTarget) {
+                targetTimer -= dt;
+                const timerEl = document.getElementById('missionTimer');
+                if (timerEl) {
+                    timerEl.textContent = `${Math.max(0, targetTimer).toFixed(1)}s`;
+                }
+                if (targetTimer <= 0) {
+                    triggerTimeoutPenalty();
+                }
+            }
+
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.alpha -= dt * 1.8;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+        }
+
+        // --- RENDER ENGINE ---
+        function render() {
+            if (!ctx) return;
+
+            // 1. Background Workshop Concrete Floor
+            ctx.fillStyle = "#0b1120";
+            ctx.fillRect(0, 0, 600, 600);
+
+            // Subtle Grid Lines
+            ctx.strokeStyle = "rgba(30, 41, 59, 0.45)";
+            ctx.lineWidth = 1;
+            for (let g = 0; g <= 600; g += 20) {
+                ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, 600); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, g); ctx.lineTo(600, g); ctx.stroke();
+            }
+
+            // 2. Central Cross Walkway (Lorong Utama)
+            ctx.fillStyle = "#111827";
+            ctx.fillRect(268, 0, 64, 600);
+            ctx.fillRect(0, 268, 600, 64);
+
+            // Yellow Safety Center Lines on Walkway
+            ctx.save();
+            ctx.strokeStyle = "rgba(245, 158, 11, 0.35)";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath(); ctx.moveTo(300, 0); ctx.lineTo(300, 600); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 300); ctx.lineTo(600, 300); ctx.stroke();
+            ctx.restore();
+
+            // 3. Four Symmetrical Workshop Rooms (256x256 each)
+            const zones = [
+                { x: 12, y: 12, title: "ZONA 1: BENGKEL BUBUT A (6 BUBUT • 4 LAMPU • 3 KIPAS)", accent: "#10b981" },
+                { x: 12, y: 332, title: "ZONA 2: BENGKEL BUBUT B (6 BUBUT • 4 LAMPU • 3 KIPAS)", accent: "#10b981" },
+                { x: 332, y: 12, title: "ZONA 3: KERJA BANGKU (6 MEJA TANGGEM • 4 LAMPU • 3 KIPAS)", accent: "#38bdf8" },
+                { x: 332, y: 332, title: "ZONA 4: BENGKEL GRINDING (6 GRINDING • 4 LAMPU • 3 KIPAS)", accent: "#f59e0b" }
+            ];
+
+            zones.forEach(z => {
+                // Room Floor
+                ctx.fillStyle = "#162032";
+                ctx.fillRect(z.x, z.y, 256, 256);
+
+                // Room Border
+                ctx.strokeStyle = "#334155";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(z.x, z.y, 256, 256);
+
+                // Top Header Banner inside each zone
+                ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+                ctx.fillRect(z.x + 2, z.y + 2, 252, 18);
+                ctx.fillStyle = z.accent;
+                ctx.font = "bold 8px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(z.title, z.x + 128, z.y + 14);
+
+                // Divider line for bottom Lighting Row
+                ctx.strokeStyle = "rgba(100, 116, 139, 0.3)";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(z.x + 10, z.y + 186);
+                ctx.lineTo(z.x + 246, z.y + 186);
+                ctx.stroke();
+
+                // Vertical divider for right Fan Corridor
+                ctx.beginPath();
+                ctx.moveTo(z.x + 194, z.y + 24);
+                ctx.lineTo(z.x + 194, z.y + 182);
+                ctx.stroke();
+            });
+
+            const activeTarget = targetQueue[currentTargetIndex];
+            const pulse = (Math.sin(Date.now() / 130) + 1) / 2;
+
+            // 4. Render All Equipments
+            equipments.forEach(eq => {
+                const isTarget = activeTarget && activeTarget.id === eq.id && gameState === "PLAYING";
+
+                // Target glowing aura
+                if (isTarget) {
+                    ctx.save();
+                    ctx.fillStyle = `rgba(239, 68, 68, ${0.22 + pulse * 0.3})`;
+                    ctx.strokeStyle = `rgba(248, 113, 113, ${0.65 + pulse * 0.35})`;
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.roundRect(eq.x - 5, eq.y - 5, eq.w + 10, eq.h + 10, 8);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Draw specific equipment sprite
+                if (eq.type === "lathe") {
+                    // Mesin Bubut (Green Industrial Lathe)
+                    ctx.fillStyle = eq.isOn ? "#065f46" : "#1e293b";
+                    ctx.fillRect(eq.x, eq.y, eq.w, eq.h);
+                    ctx.strokeStyle = eq.isOn ? "#34d399" : "#475569";
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(eq.x, eq.y, eq.w, eq.h);
+
+                    // Headstock & Chuck
+                    ctx.fillStyle = "#0f172a";
+                    ctx.fillRect(eq.x + 4, eq.y + 5, 18, 24);
+                    ctx.fillStyle = "#94a3b8";
+                    ctx.fillRect(eq.x + 22, eq.y + 10, 7, 14);
+                    // Bed & Tailstock
+                    ctx.fillStyle = "#64748b";
+                    ctx.fillRect(eq.x + 29, eq.y + 15, 34, 4);
+                    ctx.fillStyle = "#334155";
+                    ctx.fillRect(eq.x + 56, eq.y + 8, 11, 18);
+                } else if (eq.type === "bench_vise") {
+                    // Meja Kerja Bangku + Tanggem (Vise)
+                    ctx.fillStyle = eq.isOn ? "#78350f" : "#334155";
+                    ctx.fillRect(eq.x, eq.y, eq.w, eq.h);
+                    ctx.strokeStyle = eq.isOn ? "#fbbf24" : "#475569";
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(eq.x, eq.y, eq.w, eq.h);
+
+                    // Tanggem (Ragum / Bench Vise)
+                    ctx.fillStyle = "#0284c7";
+                    ctx.fillRect(eq.x + 26, eq.y + 6, 20, 14);
+                    ctx.fillStyle = "#e2e8f0";
+                    ctx.fillRect(eq.x + 24, eq.y + 4, 24, 4);
+                    // Handle tanggem
+                    ctx.strokeStyle = "#cbd5e1";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(eq.x + 22, eq.y + 24);
+                    ctx.lineTo(eq.x + 50, eq.y + 24);
+                    ctx.stroke();
+                } else if (eq.type === "grind") {
+                    // Mesin Grinding (Blue/Slate Grinder)
+                    ctx.fillStyle = eq.isOn ? "#1e3a8a" : "#1e293b";
+                    ctx.fillRect(eq.x, eq.y, eq.w, eq.h);
+                    ctx.strokeStyle = eq.isOn ? "#60a5fa" : "#475569";
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(eq.x, eq.y, eq.w, eq.h);
+
+                    // Motor housing & Dual Grinding Wheels
+                    ctx.fillStyle = "#0f172a";
+                    ctx.fillRect(eq.x + 22, eq.y + 7, 28, 20);
+                    ctx.fillStyle = eq.isOn ? "#cbd5e1" : "#64748b";
+                    ctx.fillRect(eq.x + 12, eq.y + 6, 8, 22);
+                    ctx.fillRect(eq.x + 52, eq.y + 6, 8, 22);
+                } else if (eq.type === "fan") {
+                    // Kipas Angin Industrial
+                    const cx = eq.x + eq.w / 2;
+                    const cy = eq.y + eq.h / 2;
+                    ctx.fillStyle = "#1e293b";
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = eq.isOn ? "#38bdf8" : "#475569";
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Rotating Blades
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    if (eq.isOn) ctx.rotate(fanRotation);
+                    ctx.fillStyle = eq.isOn ? "#7dd3fc" : "#64748b";
+                    for (let b = 0; b < 3; b++) {
+                        ctx.rotate((Math.PI * 2) / 3);
+                        ctx.fillRect(-2, -11, 4, 11);
+                    }
+                    ctx.restore();
+                } else if (eq.type === "light") {
+                    // Lampu Penerangan Bengkel
+                    ctx.fillStyle = eq.isOn ? "#fef08a" : "#1e293b";
+                    ctx.beginPath();
+                    ctx.roundRect(eq.x, eq.y, eq.w, eq.h, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = eq.isOn ? "#facc15" : "#475569";
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    if (eq.isOn) {
+                        ctx.fillStyle = "rgba(254, 240, 138, 0.16)";
+                        ctx.beginPath();
+                        ctx.arc(eq.x + eq.w / 2, eq.y + eq.h / 2, 24, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Status LED Indicator Dot (Red = ON / Boros, Emerald = OFF / Hemat)
+                ctx.fillStyle = eq.isOn ? "#ef4444" : "#10b981";
+                ctx.beginPath();
+                ctx.arc(eq.x + eq.w - 5, eq.y + 5, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 5. Floating Arrow & [E] Hint above Active Target
+            if (activeTarget && gameState === "PLAYING") {
+                const tx = activeTarget.x + activeTarget.w / 2;
+                const ty = activeTarget.y - 10 - pulse * 6;
+
+                // Bouncing Red Arrow
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath();
+                ctx.moveTo(tx, ty + 7);
+                ctx.lineTo(tx - 6, ty - 2);
+                ctx.lineTo(tx + 6, ty - 2);
+                ctx.closePath();
+                ctx.fill();
+
+                // [E] Badge
+                ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+                ctx.beginPath();
+                ctx.roundRect(tx - 11, ty - 18, 22, 13, 4);
+                ctx.fill();
+                ctx.strokeStyle = "#fbbf24";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = "#fbbf24";
+                ctx.font = "bold 9px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("E", tx, ty - 8);
+            }
+
+            // 6. Render Player (Teknisi SMK)
+            ctx.save();
+            // Shadow
+            ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+            ctx.beginPath();
+            ctx.ellipse(player.x, player.y + 11, 11, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Technician Body (Wearpack Blue)
+            ctx.fillStyle = "#0284c7";
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#e0f2fe";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Safety Helmet (Yellow)
+            ctx.fillStyle = "#facc15";
+            ctx.beginPath();
+            ctx.arc(player.x, player.y - 2, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Facing Direction Visor
+            ctx.fillStyle = "#0f172a";
+            ctx.beginPath();
+            ctx.arc(player.x + player.dirX * 5, player.y + player.dirY * 5, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 7. Render Particles
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // --- MAIN GAME LOOP ---
+        let lastTime = 0;
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = Math.min(0.05, (timestamp - lastTime) / 1000);
+            lastTime = timestamp;
+
+            update(dt);
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- INIT & START ---
+        function initGame() {
+            canvas = document.getElementById('gameCanvas');
+            if (!canvas) return;
+            ctx = canvas.getContext('2d');
+
+            initEquipments();
+            setupInputs();
+            setupTouchControls();
+
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const lvl = parseInt(btn.getAttribute('data-level'));
+                    selectLevel(lvl);
+                });
+            });
+
+            const btnStart = document.getElementById('btnStart');
+            const btnRestart = document.getElementById('btnRestart');
+            const btnNextLevel = document.getElementById('btnNextLevel');
+            const btnHome = document.getElementById('btnHome');
+            const btnHudHome = document.getElementById('btnHudHome');
+            const btnAction = document.getElementById('btnAction');
+
+            if (btnStart) btnStart.addEventListener('click', () => startGame(selectedLevel));
+            if (btnRestart) btnRestart.addEventListener('click', () => startGame(selectedLevel));
+            if (btnNextLevel) btnNextLevel.addEventListener('click', () => {
+                if (selectedLevel < 3) startGame(selectedLevel + 1);
+            });
+            if (btnHome) btnHome.addEventListener('click', goToHome);
+            if (btnHudHome) btnHudHome.addEventListener('click', goToHome);
+            if (btnAction) btnAction.addEventListener('click', checkInteraction);
+
+            canvas.addEventListener('pointerdown', handleCanvasClick);
+
+            selectLevel(1);
+            requestAnimationFrame(gameLoop);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGame);
+        } else {
+            initGame();
+        }
+    </script>
+</body>
+</html>
